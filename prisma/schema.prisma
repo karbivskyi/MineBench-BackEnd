@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  walletAddress String @unique
+  username  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Virtual wallet balance
+  virtualBalance Decimal @default(0.0)
+  
+  // Mining stats
+  totalHashRate  Decimal @default(0.0)
+  totalMined     Decimal @default(0.0)
+  lastActive     DateTime?
+  
+  // Relations
+  miningRecords  MiningRecord[]
+  benchmarkResults BenchmarkResult[]
+  walletTransactions WalletTransaction[]
+  
+  @@map("users")
+}
+
+model MiningRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Mining session data
+  sessionId String   @unique
+  startTime DateTime
+  endTime   DateTime?
+  duration  Int      // in seconds
+  
+  // Performance metrics
+  hashRate  Decimal  // hashes per second
+  algorithm String
+  difficulty String
+  
+  // Rewards
+  coinsEarned Decimal @default(0.0)
+  tokensEarned Decimal @default(0.0)
+  
+  // Hardware info
+  gpuInfo   String?
+  
+  createdAt DateTime @default(now())
+  
+  @@map("mining_records")
+}
+
+model BenchmarkResult {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // Benchmark data
+  duration  Int      // in seconds
+  hashRate  Decimal  // hashes per second
+  difficulty String
+  algorithm String
+  score     Decimal
+  
+  // Rewards  
+  tokensEarned Decimal @default(0.0)
+  
+  // Hardware info
+  gpuInfo   String?
+  
+  timestamp DateTime @default(now())
+  
+  @@map("benchmark_results")
+}
+
+model WalletTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  type      String   // MINING_REWARD, BENCHMARK_REWARD, WITHDRAWAL, DEPOSIT
+  amount    Decimal
+  
+  // Solana transaction details
+  txHash    String?  @unique
+  fromAddress String?
+  toAddress String?
+  
+  status    String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  
+  createdAt DateTime @default(now())
+  processedAt DateTime?
+  
+  @@map("wallet_transactions")
+}
+
+model TokenPool {
+  id        String   @id @default(cuid())
+  
+  // Pool management
+  totalSupply    Decimal
+  circulatingSupply Decimal
+  reserveBalance Decimal
+  
+  // Distribution rates
+  miningRewardRate   Decimal @default(1.0)  // tokens per hash
+  benchmarkRewardRate Decimal @default(0.5) // tokens per benchmark point
+  
+  // Withdrawal settings
+  minimumWithdrawal Decimal @default(100.0)
+  
+  lastUpdated DateTime @updatedAt
+  
+  @@map("token_pool")
+}
